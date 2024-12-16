@@ -7,7 +7,7 @@ stdout JSON to comment on the PR/diffs, fail the build, etc.
 
 ## Installing Customs
 
-TODO
+Run `go install github.com/blakewilliams/customs/cmd/customs` or clone+build from source.
 
 ## Usage
 
