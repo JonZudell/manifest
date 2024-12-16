@@ -25,53 +25,9 @@ customs:
         command: 'script/job-perform-inspector'
 ```
 
-Then you can run `customs inspect` which will run each of the provided
+Then you can run `git diff main | customs inspect` which will run each of the provided
 inspectors in the provided config. Arguments provided in the config can be
 overridden using the CLI flags ( see `customs inspect help`).
-
-### Getting import JSON to test scripts
-
-Since customs work primarily through piping stdin and stdout, you'll need to generate the relevant JSON to pass to scripts utilizing `customs`. To get JSON usable for testing or running customs inspectors, you can pass `--only-import-json` to bypass running the configured scripts and return only the import JSON that would be passed to the inspectors.
-
-```sh
-$ cat my.diff | go run cmd/customs/main.go inspect --only-import-json
-```
-
-Which should result in output like:
-
-```json
-{
-  "pullProvided": false,
-  "diff": {
-    "changed": [
-      "app/jobs/greeter_job.rb"
-    ],
-    "deleted": [],
-    "renamed": [],
-    "new": [],
-    "copied": [],
-    "files": {
-      "app/jobs/greeter_job.rb": {
-        "operation": "change",
-        "new_name": "app/jobs/greeter_job.rb",
-        "old_name": "app/jobs/greeter_job.rb",
-        "left": [
-          {
-            "lineno": 4,
-            "content": "  def perform\n"
-          }
-        ],
-        "right": [
-          {
-            "lineno": 4,
-            "content": "  def perform(name)\n"
-          }
-        ]
-      }
-    }
-  }
-}
-```
 
 ## Writing a custom inspector
 
@@ -136,13 +92,63 @@ Stdout:
 Comments are then output to stdout or posted to Pull Requests. The format of comments should be:
 
 ```json
-    {
-      "file": "app/jobs/greeter_job.rb",         // optional file, missing file+line comments top-level
-      "line": 4,                                 // optional line number
-      "text": "don't do that because...!",       // The text to output
-      "severity": "Warn"                         // The severity of the violation. Can be one of Info, Warn, or Error.
-    }
+{
+  "file": "app/jobs/greeter_job.rb",         // optional file, missing file+line comments top-level
+  "line": 4,                                 // optional line number
+  "text": "don't do that because...!",       // The text to output
+  "severity": "Warn"                         // The severity of the violation. Can be one of Info, Warn, or Error.
+}
 ```
 
 
 See also the `Result` struct in `result.go` for more details on the expected output format and the `Import` struct in `customs.go` for the expected inputs.
+
+### Getting import JSON to test scripts
+
+Since customs work primarily through piping stdin and stdout, you'll need to generate the relevant JSON to pass to scripts utilizing `customs`. To get JSON usable for testing or running customs inspectors, you can pass `--only-import-json` to bypass running the configured scripts and return only the import JSON that would be passed to the inspectors.
+
+```sh
+$ cat my.diff | customs inspect --only-import-json
+```
+
+Which should result in output like:
+
+```json
+{
+  "pullProvided": false,
+  "diff": {
+    "changed": [
+      "app/jobs/greeter_job.rb"
+    ],
+    "deleted": [],
+    "renamed": [],
+    "new": [],
+    "copied": [],
+    "files": {
+      "app/jobs/greeter_job.rb": {
+        "operation": "change",
+        "new_name": "app/jobs/greeter_job.rb",
+        "old_name": "app/jobs/greeter_job.rb",
+        "left": [
+          {
+            "lineno": 4,
+            "content": "  def perform\n"
+          }
+        ],
+        "right": [
+          {
+            "lineno": 4,
+            "content": "  def perform(name)\n"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+Using this output, you can pipe the JSON directly into your inspector script:
+
+```sh
+$ cat my.diff | customs inspect --only-import-json | my-inspector
+```
