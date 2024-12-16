@@ -2,11 +2,14 @@ package customs
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Inspection struct {
@@ -44,23 +47,33 @@ func (i *Inspection) Perform() error {
 		return err
 	}
 
+	// TODO add a timout config
+	g, _ := errgroup.WithContext(context.Background())
+	g.SetLimit(i.config.Concurrency)
+
 	for name, inspector := range i.config.Inspectors {
-		cmd := exec.Command("sh", "-c", inspector)
-		cmd.Stdin = bytes.NewReader(importJSON)
-		output, err := cmd.Output()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to run inspector %s: %s", name, err)
-			continue
-		}
+		g.Go(func() error {
+			cmd := exec.Command("sh", "-c", inspector)
+			cmd.Stdin = bytes.NewReader(importJSON)
+			output, err := cmd.Output()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to run inspector %s: %s", name, err)
+				return nil
+			}
 
-		var result Result
-		err = json.Unmarshal(output, &result)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse output for inspector %s: %s", name, err)
-			continue
-		}
+			var result Result
+			err = json.Unmarshal(output, &result)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to parse output for inspector %s: %s", name, err)
+				return nil
+			}
 
-		i.config.Formatter.Format(name, i.customsImport, result)
+			i.config.Formatter.Format(name, i.customsImport, result)
+			return nil
+		})
 	}
+
+	g.Wait()
+
 	return nil
 }
