@@ -42,7 +42,7 @@ func (r *Result) Warn(message string) {
 	})
 }
 
-// Warn adds a warning to a specific line in a file that will be shown to the
+// WarnLine adds a warning to a specific line in a file that will be shown to the
 // user based on the provided formatter.
 func (r *Result) WarnLine(file string, line uint, message string) {
 	r.Comments = append(r.Comments, Comment{
