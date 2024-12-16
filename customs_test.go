@@ -23,12 +23,12 @@ func TestCustoms_NewFile(t *testing.T) {
 	require.Len(t, diff.NewFiles, 1)
 
 	readme := diff.Files["README.md"]
-	require.True(t, readme.IsNew, "expected README to be new")
+	require.Equal(t, DiffOperationNew, readme.Operation, "expected README to be new")
 
 	require.Len(t, readme.Left, 0, "expected left side of README diff to be empty")
 	require.Len(t, readme.Right, 1, "expected left side of README diff to be empty")
 
 	line := readme.Right[0]
 	require.Equal(t, "# The truth is out there", line.Content)
-	require.Equal(t, uint(1), line.Number)
+	require.Equal(t, uint(1), line.LineNo)
 }

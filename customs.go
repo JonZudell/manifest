@@ -7,15 +7,15 @@ import (
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 )
 
-// Entry is the struct passed to plugins that provide the info necessary to
+// Import is the struct passed to plugins that provide the info necessary to
 // apply rules. It includes information about the PR if present, and the diff.
-type Entry struct {
+type Import struct {
 	// PullTitle is the title of the pull request if present.
-	PullTitle string
+	PullTitle string `json:"pullTitle"`
 	// PullDescription is the description of the pull request, if present
-	PullDescription string
+	PullDescription string `json:"pullDescription"`
 	// PullProvided is true if the pull request is provided.
-	PullProvided bool
+	PullProvided bool `json:"pullProvided"`
 
 	// Diff is the parsed changes for this diff
 	Diff Diff `json:"diff"`
@@ -32,26 +32,42 @@ type Diff struct {
 	RenamedFiles []string `json:"renamed"`
 	// NewFiles is a list of files that have been added.
 	NewFiles []string `json:"new"`
+	// CopiedFiles is a list of files that have been copied.
+	CopiedFiles []string `json:"copied"`
 
 	// Files is a mapping of file names to the file contents
 	Files map[string]File `json:"files"`
 }
 
+type DiffOperation string
+
+const (
+	DiffOperationNew    DiffOperation = "new"
+	DiffOperationDelete DiffOperation = "delete"
+	DiffOperationRename DiffOperation = "rename"
+	DiffOperationChange DiffOperation = "change"
+	DiffOperationCopy   DiffOperation = "copy"
+)
+
 // File is represents a single file in a diff
 type File struct {
-	IsNew     bool `json:"new"`
-	IsDeleted bool `json:"deleted"`
-	IsRenamed bool `json:"renamed"`
+	Operation DiffOperation `json:"operation"`
 
-	// TODO this HAS to include line numbers
+	// Name is the new name of the file
+	Name string `json:"new_name"`
+	// OldName is the old name of the file, if it was renamed
+	OldName string `json:"old_name"`
+
 	Left  []Line `json:"left"`
 	Right []Line `json:"right"`
+
+	// TODO include mode changes
 }
 
 // Line represents a change (add/delete) in a diff
 type Line struct {
-	Number  uint
-	Content string
+	LineNo  uint   `json:"lineno"`
+	Content string `json:"content"`
 }
 
 // NewDiff returns a new diff that can be used by plugins
@@ -66,6 +82,7 @@ func NewDiff(f io.Reader) (Diff, error) {
 		ChangedFiles: make([]string, 0),
 		DeletedFiles: make([]string, 0),
 		RenamedFiles: make([]string, 0),
+		CopiedFiles:  make([]string, 0),
 		NewFiles:     make([]string, 0),
 		Files:        make(map[string]File, len(files)),
 	}
@@ -77,19 +94,18 @@ func NewDiff(f io.Reader) (Diff, error) {
 		for _, fragment := range file.TextFragments {
 			leftStart := fragment.OldPosition
 			rightStart := fragment.NewPosition
-			fmt.Println(fragment.OldLines)
 
 			for _, line := range fragment.Lines {
 				switch line.Op {
 				case gitdiff.OpDelete:
 					leftLines = append(leftLines, Line{
-						Number:  uint(leftStart),
+						LineNo:  uint(leftStart),
 						Content: line.Line,
 					})
 					leftStart++
 				case gitdiff.OpAdd:
 					rightLines = append(rightLines, Line{
-						Number:  uint(rightStart),
+						LineNo:  uint(rightStart),
 						Content: line.Line,
 					})
 					rightStart++
@@ -106,9 +122,9 @@ func NewDiff(f io.Reader) (Diff, error) {
 			name = file.NewName
 		}
 		diff.Files[name] = File{
-			IsNew:     file.IsNew,
-			IsDeleted: file.IsDelete,
-			IsRenamed: file.IsRename,
+			Name:      file.NewName,
+			OldName:   file.OldName,
+			Operation: operationForFile(file),
 			Left:      leftLines,
 			Right:     rightLines,
 		}
@@ -119,6 +135,8 @@ func NewDiff(f io.Reader) (Diff, error) {
 			diff.DeletedFiles = append(diff.DeletedFiles, file.OldName)
 		} else if file.IsRename {
 			diff.RenamedFiles = append(diff.RenamedFiles, file.OldName)
+		} else if file.IsCopy {
+			diff.CopiedFiles = append(diff.CopiedFiles, file.OldName)
 		} else {
 			diff.ChangedFiles = append(diff.ChangedFiles, file.OldName)
 		}
@@ -126,4 +144,18 @@ func NewDiff(f io.Reader) (Diff, error) {
 	}
 
 	return *diff, nil
+}
+
+func operationForFile(f *gitdiff.File) DiffOperation {
+	if f.IsNew {
+		return DiffOperationNew
+	} else if f.IsDelete {
+		return DiffOperationDelete
+	} else if f.IsRename {
+		return DiffOperationRename
+	} else if f.IsCopy {
+		return DiffOperationCopy
+	} else {
+		return DiffOperationChange
+	}
 }

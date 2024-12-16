@@ -1,4 +1,4 @@
-package plugins
+package inspectors
 
 import (
 	"strings"
@@ -27,7 +27,7 @@ func TestCustoms_NewFile(t *testing.T) {
 	diff, err := customs.NewDiff(strings.NewReader(argumentChangeDiff))
 	require.NoError(t, err)
 
-	entry := &customs.Entry{Diff: diff}
+	entry := &customs.Import{Diff: diff}
 	result := &customs.Result{Comments: make([]customs.Comment, 0)}
 
 	err = RailsJobArguments(entry, result)
