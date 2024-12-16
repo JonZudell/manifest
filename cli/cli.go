@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/blakewilliams/customs"
 	"github.com/blakewilliams/customs/formatters/prettyformat"
 	"github.com/blakewilliams/customs/inspectors"
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,7 +24,7 @@ func New() *CLI {
 		Commands: []*cli.Command{
 			{
 				Name:  "inspect",
-				Usage: "todo",
+				Usage: "Runs the configured inspectors against the provided diff",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "config",
@@ -30,7 +32,7 @@ func New() *CLI {
 						Usage:   "Uses provided config `FILE`",
 					},
 					&cli.StringFlag{
-						Name:    "diffSource",
+						Name:    "diff",
 						Aliases: []string{"d"},
 						Usage:   "Uses the provided diff `FILE`",
 					},
@@ -38,6 +40,16 @@ func New() *CLI {
 						Name:  "only-import-json",
 						Usage: "Outputs only the JSON and does not run the inspectors",
 					},
+					&cli.IntFlag{
+						Name:  "concurrency",
+						Usage: "Sets how many inspectors will run concurrently",
+					},
+					&cli.StringSliceFlag{
+						Name:    "inspector",
+						Aliases: []string{"i"},
+						Usage:   "Runs the provided inspector `script`",
+					},
+					// TODO add formatter override
 				},
 				Action: func(cctx *cli.Context) error {
 					var in io.Reader
@@ -48,25 +60,48 @@ func New() *CLI {
 					}
 					if (fi.Mode() & os.ModeCharDevice) == 0 {
 						in = os.Stdin
-					} else if cctx.String("diffSource") != "" {
-						f, err := os.Open(cctx.String("diffSource"))
+					} else if diff := cctx.String("diff"); diff != "" {
+						f, err := os.Open(diff)
 						if err != nil {
 							return err
 						}
 						defer f.Close()
 						in = f
 					} else {
-						return cli.ShowCommandHelp(cctx, "run")
+						if err := cli.ShowSubcommandHelp(cctx); err != nil {
+							fmt.Println(err)
+						}
+						fmt.Printf("\n")
+						return cli.Exit(color.New(color.FgRed).Sprint("No diff provided. Please provide a --diff or pass the diff via stdin."), 1)
 					}
 
-					config := customs.Configuration{
-						Formatter: prettyformat.New(os.Stdout),
+					// Setup root configuration
+					customsConfig := &customs.Configuration{
+						Concurrency: 1,
+						Formatter:   prettyformat.New(os.Stdout),
+						Inspectors:  map[string]string{},
 					}
-
-					inspection, err := customs.NewInspection(config, in)
+					err = applyConfig(cctx.String("config"), customsConfig)
 					if err != nil {
-						fmt.Println(err)
-						return cli.ShowCommandHelp(cctx, "run")
+						return err
+					}
+
+					// config overrides
+					if concurrency := cctx.Int("concurrency"); concurrency > 0 {
+						customsConfig.Concurrency = concurrency
+					}
+
+					// include CLI defined inspectors
+					if inspectors := cctx.StringSlice("inspector"); inspectors != nil {
+						for _, inspector := range inspectors {
+							customsConfig.Inspectors[inspector] = inspector
+						}
+					}
+
+					inspection, err := customs.NewInspection(customsConfig, in)
+					if err != nil {
+						color.New(color.FgRed).Println(err.Error())
+						return cli.ShowSubcommandHelp(cctx)
 					}
 
 					if cctx.Bool("only-import-json") {
@@ -77,6 +112,15 @@ func New() *CLI {
 
 						fmt.Println(string(out))
 						return nil
+					}
+
+					if len(customsConfig.Inspectors) == 0 {
+						if err := cli.ShowSubcommandHelp(cctx); err != nil {
+							fmt.Println(err)
+						}
+						fmt.Printf("\n")
+						return cli.Exit(color.New(color.FgRed).Sprint("No inspectors were provided. Add one to customs.yaml or passed via --inspector"), 1)
+
 					}
 
 					inspection.Perform()
@@ -110,4 +154,58 @@ func New() *CLI {
 
 func (c *CLI) Run(args []string) error {
 	return c.app.Run(args)
+}
+
+func applyConfig(configArg string, rootConfig *customs.Configuration) error {
+	if configArg != "" {
+		f, err := os.Open(configArg)
+		if err != nil {
+			return cli.Exit(fmt.Sprintf("Could not open the provided config file: %s", err), 1)
+		}
+		defer f.Close()
+		customs.ParseConfig(f, rootConfig, map[string]customs.Formatter{"pretty": prettyformat.New(os.Stdout)})
+
+		return nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return cli.Exit("Could not get current working directory", 1)
+	}
+	rootDir, err := findGitDir(cwd)
+	if err != nil && err != os.ErrNotExist {
+		return cli.Exit(fmt.Sprintf("error when looking for root dir: %s", err), 1)
+	}
+
+	if err == os.ErrNotExist {
+		return nil
+	}
+
+	configPath := filepath.Join(rootDir, "customs.yaml")
+	if _, err := os.Stat(configPath); err == nil {
+		f, err := os.Open(configPath)
+		if err != nil {
+			return cli.Exit(fmt.Sprintf("Could not open the config file found in the root folder: %s", err), 1)
+		}
+		defer f.Close()
+
+		customs.ParseConfig(f, rootConfig, map[string]customs.Formatter{"pretty": prettyformat.New(os.Stdout)})
+	}
+
+	return nil
+}
+
+func findGitDir(startDir string) (string, error) {
+	dir := startDir
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", os.ErrNotExist
 }

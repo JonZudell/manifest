@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 
@@ -12,38 +13,42 @@ import (
 
 type Formatter struct {
 	out io.Writer
+	mu  sync.Mutex
 }
 
-var warnColor = color.New(color.FgYellow, color.Bold).FprintFunc()
-var errorColor = color.New(color.FgRed, color.Bold).FprintFunc()
-var infoColor = color.New(color.FgBlue, color.Bold).FprintFunc()
+var warnColor = color.New(color.FgYellow, color.Bold)
+var errorColor = color.New(color.FgRed, color.Bold)
+var infoColor = color.New(color.FgBlue, color.Bold)
 
 func New(out io.Writer) *Formatter {
 	return &Formatter{out: out}
 }
 
 func (s *Formatter) Format(source string, i *customs.Import, r customs.Result) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for _, comment := range r.Comments {
 		switch comment.Severity {
 		case customs.SeverityError:
-			errorColor(s.out, "== Error: %s", source)
+			errorColor.Fprintf(s.out, "== Error: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
-				errorColor(s.out, "%s:%s", comment.File, comment.Line)
+				errorColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)
 			}
 		case customs.SeverityWarn:
-			warnColor(s.out, "== Warning: %s", source)
+			warnColor.Fprintf(s.out, "== Warning: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
-				warnColor(s.out, "%s:%s", comment.File, comment.Line)
+				warnColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)
 			}
 		case customs.SeverityInfo:
-			warnColor(s.out, "== Info: %s", source)
+			warnColor.Fprintf(s.out, "== Info: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
-				infoColor(s.out, "%s:%s", comment.File, comment.Line)
+				infoColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)
 			}
 		}
 
 		for _, line := range strings.Split(comment.Text, "\n") {
-			fmt.Fprintf(s.out, ">  %s", line)
+			fmt.Fprintf(s.out, "  > %s", line)
 		}
 
 		fmt.Printf("\n\n")

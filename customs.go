@@ -11,9 +11,9 @@ import (
 // apply rules. It includes information about the PR if present, and the diff.
 type Import struct {
 	// PullTitle is the title of the pull request if present.
-	PullTitle string `json:"pullTitle"`
+	PullTitle string `json:"pullTitle,omitempty"`
 	// PullDescription is the description of the pull request, if present
-	PullDescription string `json:"pullDescription"`
+	PullDescription string `json:"pullDescription,omitempty"`
 	// PullProvided is true if the pull request is provided.
 	PullProvided bool `json:"pullProvided"`
 

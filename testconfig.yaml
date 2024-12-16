@@ -1,0 +1,6 @@
+customs:
+  concurrency: 2
+  formatter: pretty
+  inspectors:
+    rails_job_perform:
+      command: 'customs inspector rails_job_perform'
