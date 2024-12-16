@@ -2,13 +2,32 @@
 
 Customs is a Go application that is designed to lint pull requests and diffs
 using configurable rules. It is language agnostic, passing the relevant pull
-request and diff information to scripts via JSON while using the resulting stdout JSON to comment on the PR/diffs, fail the build, etc.
+request and diff information to scripts via JSON while using the resulting
+stdout JSON to comment on the PR/diffs, fail the build, etc.
 
 ## Installing Customs
 
 TODO
 
 ## Usage
+
+The primary usage of `customs` is via `customs inspect`, which can be configured directly in the CLI (see `customs inspect help`) or a configuration file:
+
+```yaml
+# Sample YAML config
+customs:
+  concurrency: 2     # How many inspectors to run at once
+  formatter: pretty  # The formatter to use
+  inspectors:        # The inspector scripts to run and report on
+    feature_flags:
+        command: 'script/feature-flag-inspector'
+    rails_job_perform:
+        command: 'script/job-perform-inspector'
+```
+
+Then you can run `customs inspect` which will run each of the provided
+inspectors in the provided config. Arguments provided in the config can be
+overridden using the CLI flags ( see `customs inspect help`).
 
 ### Getting import JSON to test scripts
 
@@ -54,9 +73,11 @@ Which should result in output like:
 }
 ```
 
-## Writing a script
+## Writing a custom inspector
 
-Customs scripts are extremely simple. They are passed JSON as stdin and are expected to output JSON to stdout that looks like the following:
+Customs inspectors can be written in any language since they effectively accept
+JSON as stdin, and output JSON in stdout so `customs` can output it
+appropriately. The following JSON is the expected format:
 
 Stdin:
 
@@ -123,3 +144,5 @@ Comments are then output to stdout or posted to Pull Requests. The format of com
     }
 ```
 
+
+See also the `Result` struct in `result.go` for more details on the expected output format and the `Import` struct in `customs.go` for the expected inputs.
