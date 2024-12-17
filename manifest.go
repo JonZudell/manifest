@@ -1,4 +1,4 @@
-package customs
+package manifest
 
 import (
 	"fmt"
@@ -11,11 +11,9 @@ import (
 // apply rules. It includes information about the PR if present, and the diff.
 type Import struct {
 	// PullTitle is the title of the pull request if present.
-	PullTitle string `json:"pullTitle,omitempty"`
+	PullTitle string `json:"pullTitle"`
 	// PullDescription is the description of the pull request, if present
-	PullDescription string `json:"pullDescription,omitempty"`
-	// PullProvided is true if the pull request is provided.
-	PullProvided bool `json:"pullProvided"`
+	PullDescription string `json:"pullDescription"`
 
 	// RepoOwner is the owner of the repo
 	RepoOwner string `json:"repoOwner"`
@@ -23,6 +21,10 @@ type Import struct {
 	RepoName string `json:"repoName"`
 	// RepoRef is the pull request number being inspected
 	PullNumber int `json:"pullNumber"`
+
+	// Strict is true if the inspection is running in strict mode, which means
+	// it should fail if PR information is not provided.
+	Strict bool `json:"strict"`
 
 	// Diff is the parsed changes for this diff
 	Diff Diff `json:"diff"`

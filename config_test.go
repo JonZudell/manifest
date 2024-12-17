@@ -1,4 +1,4 @@
-package customs
+package manifest
 
 import (
 	_ "embed"
@@ -24,5 +24,5 @@ func TestConfig(t *testing.T) {
 	require.NotNil(t, config.Formatter)
 	require.Len(t, config.Inspectors, 1, "expected 1 plugin to be configured")
 	railsJobInspector := config.Inspectors["rails_job_perform"]
-	require.Equal(t, "customs inspector rails_job_perform", railsJobInspector)
+	require.Equal(t, "manifest inspector rails_job_perform", railsJobInspector)
 }

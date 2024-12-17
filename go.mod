@@ -1,4 +1,4 @@
-module github.com/blakewilliams/customs
+module github.com/blakewilliams/manifest
 
 go 1.23.2
 

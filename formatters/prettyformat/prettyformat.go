@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/blakewilliams/customs"
+	"github.com/blakewilliams/manifest"
 )
 
 type Formatter struct {
@@ -24,23 +24,23 @@ func New(out io.Writer) *Formatter {
 	return &Formatter{out: out}
 }
 
-func (s *Formatter) Format(source string, i *customs.Import, r customs.Result) error {
+func (s *Formatter) Format(source string, i *manifest.Import, r manifest.Result) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for _, comment := range r.Comments {
 		switch comment.Severity {
-		case customs.SeverityError:
+		case manifest.SeverityError:
 			errorColor.Fprintf(s.out, "== Error: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
 				errorColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)
 			}
-		case customs.SeverityWarn:
+		case manifest.SeverityWarn:
 			warnColor.Fprintf(s.out, "== Warning: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
 				warnColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)
 			}
-		case customs.SeverityInfo:
+		case manifest.SeverityInfo:
 			warnColor.Fprintf(s.out, "== Info: %s\n", source)
 			if comment.File != "" && comment.Line != 0 {
 				infoColor.Fprintf(s.out, "%s:%d\n", comment.File, comment.Line)

@@ -1,4 +1,4 @@
-package customs
+package manifest
 
 import (
 	"strings"
@@ -16,7 +16,7 @@ index 0000000..e69de29
 @@ -0,0 +1,1 @@
 +# The truth is out there`
 
-func TestCustoms_NewFile(t *testing.T) {
+func TestManifest_NewFile(t *testing.T) {
 	diff, err := NewDiff(strings.NewReader(newFile))
 	require.NoError(t, err)
 

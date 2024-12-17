@@ -1,9 +1,9 @@
-package customs
+package manifest
 
-// Result is the result of a rule being run against a diff. Customs uses the
+// Result is the result of a rule being run against a diff. Manifest uses the
 // result to determine if the PR passes and where to comment if configured to.
 type Result struct {
-	Error    string    `json:"error"`
+	Failure  string
 	Comments []Comment `json:"comments"`
 }
 
@@ -27,6 +27,9 @@ type Comment struct {
 	// The line to comment on. Leave blank alongside the File field to comment
 	// top-level.
 	Line uint `json:"line"`
+	// Side is the side of the diff to comment on. Can be "LEFT" or "RIGHT".
+	// This is required for file comments.
+	Side string `json:"side"`
 	// The text to include in your comment.
 	Text string `json:"text"`
 	// Severity of the comment. Defaults to Info.
@@ -44,11 +47,33 @@ func (r *Result) Warn(message string) {
 
 // WarnLine adds a warning to a specific line in a file that will be shown to the
 // user based on the provided formatter.
-func (r *Result) WarnLine(file string, line uint, message string) {
+func (r *Result) WarnLine(file string, side string, line uint, message string) {
 	r.Comments = append(r.Comments, Comment{
 		File:     file,
 		Line:     line,
 		Text:     message,
+		Side:     side,
 		Severity: SeverityWarn,
+	})
+}
+
+// Error adds a general warning that will be shown to the user based on the
+// provided formatter.
+func (r *Result) Error(message string) {
+	r.Comments = append(r.Comments, Comment{
+		Text:     message,
+		Severity: SeverityError,
+	})
+}
+
+// ErrorLine adds a warning to a specific line in a file that will be shown to the
+// user based on the provided formatter.
+func (r *Result) ErrorLine(file string, side string, line uint, message string) {
+	r.Comments = append(r.Comments, Comment{
+		File:     file,
+		Side:     side,
+		Line:     line,
+		Text:     message,
+		Severity: SeverityError,
 	})
 }

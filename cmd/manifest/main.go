@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/blakewilliams/customs/cli"
+	"github.com/blakewilliams/manifest/cli"
 )
 
 func main() {

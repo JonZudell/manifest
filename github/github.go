@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"strings"
 )
 
@@ -14,12 +13,18 @@ var ErrNoPR = errors.New("no PR exists for current branch")
 
 type (
 	Client interface {
-		DetailsForPull(owner, repo string, number int) (*PullRequest, error)
-		PullRequestIDsForSha(owner, repo, sha string) ([]int, error)
+		DetailsForPull(number int) (*PullRequest, error)
+		PullRequestIDsForSha(sha string) ([]int, error)
+		Comment(number int, comment string) error
+		FileComment(FileComment) error
+		Owner() string
+		Repo() string
 	}
 
 	defaultClient struct {
 		token      string
+		owner      string
+		repo       string
 		HttpClient *http.Client
 	}
 
@@ -35,25 +40,20 @@ type (
 		Title string
 		Body  string
 	}
-
-	// ShaResolver is used to fetch the most relevant SHA
-	ShaResolver interface {
-		RelevantSha() (string, error)
-	}
-
-	// The default ShaResolver that uses local git
-	GitShaResolver struct{}
 )
 
-func NewClient(token string) Client {
+func NewClient(token string, owner string, repo string) Client {
 	return defaultClient{
 		token:      token,
+		owner:      owner,
+		repo:       repo,
 		HttpClient: http.DefaultClient,
 	}
 }
 
-func (c defaultClient) DetailsForPull(owner, repo string, number int) (*PullRequest, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d", owner, repo, number)
+func (c defaultClient) DetailsForPull(number int) (*PullRequest, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d", c.owner, c.repo, number)
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -86,8 +86,8 @@ func (c defaultClient) DetailsForPull(owner, repo string, number int) (*PullRequ
 	return pullRequest, nil
 }
 
-func (c defaultClient) PullRequestIDsForSha(owner, repo string, sha string) ([]int, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s/pulls", owner, repo, sha)
+func (c defaultClient) PullRequestIDsForSha(sha string) ([]int, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s/pulls", c.owner, c.repo, sha)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -129,24 +129,82 @@ func (c defaultClient) PullRequestIDsForSha(owner, repo string, sha string) ([]i
 	return numbers, nil
 }
 
-func (g GitShaResolver) RelevantSha() (string, error) {
-	branchCmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	branchOutput, err := branchCmd.Output()
+func (c defaultClient) Comment(number int, comment string) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d/comments", c.owner, c.repo, number)
+	payload := map[string]string{"body": comment}
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
-	branch := strings.TrimSpace(string(branchOutput))
 
-	// Get the latest pushed SHA for the current branch
-	shaCmd := exec.Command("git", "rev-parse", "origin/"+branch)
-	shaOutput, err := shaCmd.Output()
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(payloadBytes)))
 	if err != nil {
-		if strings.Contains(string(shaOutput), "unknown revision") {
-			return "", ErrNoPR
-		}
-		return "", err
+		return fmt.Errorf("failed to create request: %w", err)
 	}
-	sha := strings.TrimSpace(string(shaOutput))
 
-	return sha, nil
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status: %d, body: %s", resp.StatusCode, body)
+	}
+
+	return nil
 }
+
+type FileComment struct {
+	Sha    string
+	Number int
+	File   string
+	Line   int
+	Text   string
+	Side   string
+}
+
+func (c defaultClient) FileComment(fc FileComment) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d/comments", c.owner, c.repo, fc.Number)
+	payload := map[string]interface{}{
+		"body":      fc.Text,
+		"commit_id": fc.Sha,
+		"path":      fc.File,
+		"line":      fc.Line,
+		"side":      fc.Side,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(payloadBytes)))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status: %d, body: %s", resp.StatusCode, body)
+	}
+
+	return nil
+}
+
+func (c defaultClient) Owner() string { return c.owner }
+func (c defaultClient) Repo() string  { return c.repo }

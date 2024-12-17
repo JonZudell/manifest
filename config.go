@@ -1,4 +1,4 @@
-package customs
+package manifest
 
 import (
 	"fmt"
@@ -17,25 +17,28 @@ type Formatter interface {
 type Configuration struct {
 	// ConcurrentInspections is the number of inspections to run concurrently.
 	Concurrency int
-	// Formatter is used to output the customs.Result
+	// Formatter is used to output the manifest.Result
 	Formatter     Formatter
 	Inspectors    map[string]string
 	FetchPullInfo bool
+	// Strict determines if certain inspections or functionality should
+	// gracefully degrade based on the environment. e.g. Missing GitHub tokens.
+	Strict bool
 }
 
 type yamlConfiguration struct {
-	Customs struct {
+	Manifest struct {
 		Concurrency          int    `yaml:"concurrency"`
 		Formatter            string `yaml:"formatter"`
 		FetchPullRequestInfo bool   `yaml:"fetchPullRequestInfo"`
 		Inspectors           map[string]struct {
 			Command string `yaml:"command"`
 		} `yaml:"inspectors"`
-	} `yaml:"customs"`
+	} `yaml:"manifest"`
 }
 
 // ParseConfig accepts a reader that should return YAML configuration for
-// customs. It returns the parsed configuration.
+// manifest. It returns the parsed configuration.
 func ParseConfig(r io.Reader, c *Configuration, formatters map[string]Formatter) error {
 	content, err := io.ReadAll(r)
 	if err != nil {
@@ -48,26 +51,27 @@ func ParseConfig(r io.Reader, c *Configuration, formatters map[string]Formatter)
 		return fmt.Errorf("could not parse configuration file: %w", err)
 	}
 
-	if yamlConfig.Customs.Concurrency > 0 {
-		c.Concurrency = yamlConfig.Customs.Concurrency
+	if yamlConfig.Manifest.Concurrency > 0 {
+		c.Concurrency = yamlConfig.Manifest.Concurrency
 	}
 
-	if yamlConfig.Customs.FetchPullRequestInfo {
+	if yamlConfig.Manifest.FetchPullRequestInfo {
+
 		c.FetchPullInfo = true
 	}
 
-	if yamlConfig.Customs.Formatter != "" {
-		formatter, ok := formatters[yamlConfig.Customs.Formatter]
+	if yamlConfig.Manifest.Formatter != "" {
+		formatter, ok := formatters[yamlConfig.Manifest.Formatter]
 		if !ok {
-			return fmt.Errorf("could not find formatter '%s'", yamlConfig.Customs.Formatter)
+			return fmt.Errorf("could not find formatter '%s'", yamlConfig.Manifest.Formatter)
 		}
 		c.Formatter = formatter
 	}
 
 	if c.Inspectors == nil {
-		c.Inspectors = make(map[string]string, len(yamlConfig.Customs.Inspectors))
+		c.Inspectors = make(map[string]string, len(yamlConfig.Manifest.Inspectors))
 	}
-	for name, inspector := range yamlConfig.Customs.Inspectors {
+	for name, inspector := range yamlConfig.Manifest.Inspectors {
 		c.Inspectors[name] = inspector.Command
 	}
 

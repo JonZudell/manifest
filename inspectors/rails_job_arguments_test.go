@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blakewilliams/customs"
+	"github.com/blakewilliams/manifest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,12 +23,12 @@ index abc1234..def5678 100644
    end
  end`
 
-func TestCustoms_NewFile(t *testing.T) {
-	diff, err := customs.NewDiff(strings.NewReader(argumentChangeDiff))
+func TestManifest_NewFile(t *testing.T) {
+	diff, err := manifest.NewDiff(strings.NewReader(argumentChangeDiff))
 	require.NoError(t, err)
 
-	entry := &customs.Import{Diff: diff}
-	result := &customs.Result{Comments: make([]customs.Comment, 0)}
+	entry := &manifest.Import{Diff: diff}
+	result := &manifest.Result{Comments: make([]manifest.Comment, 0)}
 
 	err = RailsJobArguments(entry, result)
 	require.NoError(t, err)
@@ -38,5 +38,5 @@ func TestCustoms_NewFile(t *testing.T) {
 
 	require.Equal(t, "app/jobs/greeter_job.rb", comment.File)
 	require.Equal(t, uint(4), comment.Line)
-	require.Equal(t, customs.SeverityWarn, comment.Severity)
+	require.Equal(t, manifest.SeverityWarn, comment.Severity)
 }

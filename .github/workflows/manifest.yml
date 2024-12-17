@@ -1,4 +1,4 @@
-name: Customs check
+name: Manifest check
 
 on:
   push:
@@ -6,11 +6,15 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      CUSTOMS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MANIFEST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -25,8 +29,8 @@ jobs:
       - name: Fetch target branch
         run: git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
 
-      - name: Build customs
-        run: go build -o customs cmd/customs/main.go
+      - name: Build manifest
+        run: go build -o manifest cmd/manifest/main.go
 
-      - name: Customs inspection
-        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | ./customs inspect
+      - name: Manifest inspection
+        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | ./manifest inspect --sha ${{ github.event.pull_request.head.sha }} --formatter github --strict
