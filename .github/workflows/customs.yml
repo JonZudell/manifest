@@ -24,4 +24,4 @@ jobs:
         run: go build -o customs cmd/customs/main.go
 
       - name: Customs inspection
-        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | customs inspect
+        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | ./customs inspect
