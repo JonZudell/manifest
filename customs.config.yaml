@@ -1,6 +1,7 @@
 customs:
-  concurrency: 4     # How many inspectors to run at once
-  formatter: pretty  # The formatter to use
-  inspectors:        # The inspector scripts to run and report on
+  concurrency: 4
+  formatter: pretty
+  fetchPullRequestInfo: true # Pass PR data to each inspector
+  inspectors:
     pr-body:
         command: './customs inspector pull-body'
