@@ -8,6 +8,8 @@ import (
 
 	"github.com/blakewilliams/customs"
 	"github.com/blakewilliams/customs/formatters/prettyformat"
+	"github.com/blakewilliams/customs/githelpers"
+	"github.com/blakewilliams/customs/github"
 	"github.com/blakewilliams/customs/inspectors"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -39,6 +41,11 @@ func New() *CLI {
 					&cli.BoolFlag{
 						Name:  "only-import-json",
 						Usage: "Outputs only the JSON and does not run the inspectors",
+					},
+					&cli.BoolFlag{
+						Name:    "include-pr-data",
+						Aliases: []string{"gh"},
+						Usage:   "Include PR title, description",
 					},
 					&cli.IntFlag{
 						Name:  "concurrency",
@@ -86,22 +93,21 @@ func New() *CLI {
 						return err
 					}
 
+					populateInspectors(cctx, customsConfig)
+
 					// config overrides
 					if concurrency := cctx.Int("concurrency"); concurrency > 0 {
 						customsConfig.Concurrency = concurrency
-					}
-
-					// include CLI defined inspectors
-					if inspectors := cctx.StringSlice("inspector"); inspectors != nil {
-						for _, inspector := range inspectors {
-							customsConfig.Inspectors[inspector] = inspector
-						}
 					}
 
 					inspection, err := customs.NewInspection(customsConfig, in)
 					if err != nil {
 						color.New(color.FgRed).Println(err.Error())
 						return cli.ShowSubcommandHelp(cctx)
+					}
+					err = populateGitHubData(cctx, inspection)
+					if err != nil {
+						return cli.Exit(err, 1)
 					}
 
 					if cctx.Bool("only-import-json") {
@@ -119,11 +125,16 @@ func New() *CLI {
 							fmt.Println(err)
 						}
 						fmt.Printf("\n")
-						return cli.Exit(color.New(color.FgRed).Sprint("No inspectors were provided. Add one to customs.yaml or passed via --inspector"), 1)
+						return cli.Exit(color.New(color.FgRed).Sprint("No inspectors were provided. Add one to customs.config.yaml or passed via --inspector"), 1)
 
 					}
 
-					inspection.Perform()
+					err = inspection.Perform()
+					if err != nil {
+						return cli.Exit(color.New(color.FgRed).Sprintf("Customs inspection encountered an error: %s\n", err.Error()), 1)
+					}
+
+					color.New(color.FgGreen).Fprintf(os.Stderr, "Customs inspection passed!\n")
 
 					return nil
 				},
@@ -138,7 +149,18 @@ func New() *CLI {
 						Action: func(cctx *cli.Context) error {
 							err := inspectors.Wrap("rails_job_perform", inspectors.RailsJobArguments)
 							if err != nil {
-								// TODO write {} with error to stdout
+								fmt.Fprintf(os.Stderr, "%s\n", err)
+							}
+							return nil
+						},
+					},
+
+					{
+						Name:  "pull-body",
+						Usage: "Ensures that the pull request body is not empty",
+						Action: func(cctx *cli.Context) error {
+							err := inspectors.Wrap("pull-body", inspectors.PullBody)
+							if err != nil {
 								fmt.Fprintf(os.Stderr, "%s\n", err)
 							}
 							return nil
@@ -181,7 +203,7 @@ func applyConfig(configArg string, rootConfig *customs.Configuration) error {
 		return nil
 	}
 
-	configPath := filepath.Join(rootDir, "customs.yaml")
+	configPath := filepath.Join(rootDir, "customs.config.yaml")
 	if _, err := os.Stat(configPath); err == nil {
 		f, err := os.Open(configPath)
 		if err != nil {
@@ -208,4 +230,42 @@ func findGitDir(startDir string) (string, error) {
 		dir = parent
 	}
 	return "", os.ErrNotExist
+}
+
+func populateGitHubData(cctx *cli.Context, i *customs.Inspection) error {
+	if !cctx.Bool("include-pr-data") {
+		return nil
+	}
+
+	// Ensure we have a token to fetch with
+	token := os.Getenv("CUSTOMS_GITHUB_TOKEN")
+	if token == "" {
+		fmt.Fprint(os.Stderr, "CUSTOMS_GITHUB_TOKEN was not present so pull request information could not be fetched\n")
+		return nil
+	}
+
+	// Get the owner and repo details so we can fetch from the API
+	owner, repo, err := githelpers.NwoFromOrigin()
+	if err != nil {
+		return fmt.Errorf("Could not get owner and repo from git origin: %w", err)
+	}
+
+	// Get the most recent pushed SHA so we can fetch the PR details from GitHub
+	sha, err := githelpers.UpstreamSha()
+	if err != nil && err != githelpers.ErrNoPushedBranch {
+		return fmt.Errorf("Could not get sha: %w", err)
+	}
+
+	gh := github.NewClient(token)
+
+	return i.PopulatePullDetails(gh, owner, repo, sha)
+}
+
+func populateInspectors(cctx *cli.Context, c *customs.Configuration) {
+	// include CLI defined inspectors
+	if inspectors := cctx.StringSlice("inspector"); inspectors != nil {
+		for _, inspector := range inspectors {
+			c.Inspectors[inspector] = inspector
+		}
+	}
 }

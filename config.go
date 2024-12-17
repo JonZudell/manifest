@@ -18,15 +18,17 @@ type Configuration struct {
 	// ConcurrentInspections is the number of inspections to run concurrently.
 	Concurrency int
 	// Formatter is used to output the customs.Result
-	Formatter  Formatter
-	Inspectors map[string]string
+	Formatter     Formatter
+	Inspectors    map[string]string
+	FetchPullInfo bool
 }
 
 type yamlConfiguration struct {
 	Customs struct {
-		Concurrency int    `yaml:"concurrency"`
-		Formatter   string `yaml:"formatter"`
-		Inspectors  map[string]struct {
+		Concurrency          int    `yaml:"concurrency"`
+		Formatter            string `yaml:"formatter"`
+		FetchPullRequestInfo bool   `yaml:"fetchPullRequestInfo"`
+		Inspectors           map[string]struct {
 			Command string `yaml:"command"`
 		} `yaml:"inspectors"`
 	} `yaml:"customs"`
@@ -48,6 +50,10 @@ func ParseConfig(r io.Reader, c *Configuration, formatters map[string]Formatter)
 
 	if yamlConfig.Customs.Concurrency > 0 {
 		c.Concurrency = yamlConfig.Customs.Concurrency
+	}
+
+	if yamlConfig.Customs.FetchPullRequestInfo {
+		c.FetchPullInfo = true
 	}
 
 	if yamlConfig.Customs.Formatter != "" {
