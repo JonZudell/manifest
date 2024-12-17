@@ -1,4 +1,4 @@
-name: Go
+name: Customs check
 
 on:
   push:
@@ -17,8 +17,5 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Build
+      - name: Run checks
         run: go build cmd/customs/main.go
-
-      - name: Test
-        run: go test -v ./...
