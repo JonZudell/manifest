@@ -1,0 +1,6 @@
+customs:
+  concurrency: 4     # How many inspectors to run at once
+  formatter: pretty  # The formatter to use
+  inspectors:        # The inspector scripts to run and report on
+    pr-body:
+        command: 'customs inspector pull-body'

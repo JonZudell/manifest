@@ -11,18 +11,18 @@ Run `go install github.com/blakewilliams/customs/cmd/customs` or clone+build fro
 
 ## Usage
 
-The primary usage of `customs` is via `customs inspect`, which can be configured directly in the CLI (see `customs inspect help`) or a configuration file:
+The primary usage of `customs` is via `customs inspect`, which can be configured directly in the CLI (see `customs inspect help`) or a configuration file in your root directory called `customs.config.yaml`:
 
 ```yaml
 # Sample YAML config
 customs:
-  concurrency: 2     # How many inspectors to run at once
-  formatter: pretty  # The formatter to use
-  inspectors:        # The inspector scripts to run and report on
+  concurrency: 2 # How many inspectors to run at once
+  formatter: pretty # The formatter to use
+  inspectors: # The inspector scripts to run and report on
     feature_flags:
-        command: 'script/feature-flag-inspector'
+      command: "script/feature-flag-inspector"
     rails_job_perform:
-        command: 'script/job-perform-inspector'
+      command: "script/job-perform-inspector"
 ```
 
 Then you can run `git diff main | customs inspect` which will run each of the provided
@@ -43,9 +43,7 @@ Stdin:
   "pullDescription": "Update the greeter to accept a name",
   "pullProvided": true,
   "diff": {
-    "changed": [
-      "app/jobs/greeter_job.rb"
-    ],
+    "changed": ["app/jobs/greeter_job.rb"],
     "deleted": [],
     "renamed": [],
     "new": [],
@@ -117,9 +115,7 @@ Which should result in output like:
 {
   "pullProvided": false,
   "diff": {
-    "changed": [
-      "app/jobs/greeter_job.rb"
-    ],
+    "changed": ["app/jobs/greeter_job.rb"],
     "deleted": [],
     "renamed": [],
     "new": [],

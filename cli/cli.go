@@ -105,7 +105,7 @@ func New() *CLI {
 						color.New(color.FgRed).Println(err.Error())
 						return cli.ShowSubcommandHelp(cctx)
 					}
-					err = populateGitHubData(cctx, customsConfig, inspection)
+					err = populateGitHubData(cctx, inspection)
 					if err != nil {
 						return cli.Exit(err, 1)
 					}
@@ -125,7 +125,7 @@ func New() *CLI {
 							fmt.Println(err)
 						}
 						fmt.Printf("\n")
-						return cli.Exit(color.New(color.FgRed).Sprint("No inspectors were provided. Add one to customs.yaml or passed via --inspector"), 1)
+						return cli.Exit(color.New(color.FgRed).Sprint("No inspectors were provided. Add one to customs.config.yaml or passed via --inspector"), 1)
 
 					}
 
@@ -134,7 +134,7 @@ func New() *CLI {
 						return cli.Exit(color.New(color.FgRed).Sprintf("Customs inspection encountered an error: %s\n", err.Error()), 1)
 					}
 
-					color.New(color.FgGreen).Fprintf(os.Stderr, "Customs inspection passed!")
+					color.New(color.FgGreen).Fprintf(os.Stderr, "Customs inspection passed!\n")
 
 					return nil
 				},
@@ -149,7 +149,18 @@ func New() *CLI {
 						Action: func(cctx *cli.Context) error {
 							err := inspectors.Wrap("rails_job_perform", inspectors.RailsJobArguments)
 							if err != nil {
-								// TODO write {} with error to stdout
+								fmt.Fprintf(os.Stderr, "%s\n", err)
+							}
+							return nil
+						},
+					},
+
+					{
+						Name:  "pull-body",
+						Usage: "Ensures that the pull request body is not empty",
+						Action: func(cctx *cli.Context) error {
+							err := inspectors.Wrap("pull-body", inspectors.PullBody)
+							if err != nil {
 								fmt.Fprintf(os.Stderr, "%s\n", err)
 							}
 							return nil
@@ -192,7 +203,7 @@ func applyConfig(configArg string, rootConfig *customs.Configuration) error {
 		return nil
 	}
 
-	configPath := filepath.Join(rootDir, "customs.yaml")
+	configPath := filepath.Join(rootDir, "customs.config.yaml")
 	if _, err := os.Stat(configPath); err == nil {
 		f, err := os.Open(configPath)
 		if err != nil {
@@ -221,7 +232,7 @@ func findGitDir(startDir string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-func populateGitHubData(cctx *cli.Context, c *customs.Configuration, i *customs.Inspection) error {
+func populateGitHubData(cctx *cli.Context, i *customs.Inspection) error {
 	if !cctx.Bool("include-pr-data") {
 		return nil
 	}

@@ -75,29 +75,47 @@ func (i *Inspection) Perform() error {
 	g, _ := errgroup.WithContext(context.Background())
 	g.SetLimit(i.config.Concurrency)
 
+	success := true
 	for name, inspector := range i.config.Inspectors {
 		g.Go(func() error {
 			cmd := exec.Command("sh", "-c", inspector)
 			cmd.Stdin = bytes.NewReader(importJSON)
 			output, err := cmd.Output()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to run inspector %s: %s", name, err)
+				fmt.Fprintf(os.Stderr, "Failed to run inspector %s: %s\n", name, err)
+				success = false
 				return nil
 			}
 
 			var result Result
 			err = json.Unmarshal(output, &result)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to parse output for inspector %s: %s", name, err)
+				fmt.Fprintf(os.Stderr, "Failed to parse output for inspector %s: %s\n", name, err)
+				success = false
 				return nil
 			}
 
-			i.config.Formatter.Format(name, i.customsImport, result)
-			return nil
+			if success {
+				for _, comment := range result.Comments {
+					if comment.Severity != SeverityInfo {
+						success = false
+						break
+					}
+				}
+			}
+
+			return i.config.Formatter.Format(name, i.customsImport, result)
 		})
 	}
 
-	g.Wait()
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("one or more rules failed")
+	}
 
 	return nil
 }
