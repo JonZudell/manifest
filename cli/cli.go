@@ -8,6 +8,8 @@ import (
 
 	"github.com/blakewilliams/customs"
 	"github.com/blakewilliams/customs/formatters/prettyformat"
+	"github.com/blakewilliams/customs/githelpers"
+	"github.com/blakewilliams/customs/github"
 	"github.com/blakewilliams/customs/inspectors"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -91,26 +93,21 @@ func New() *CLI {
 						return err
 					}
 
+					populateInspectors(cctx, customsConfig)
+
 					// config overrides
 					if concurrency := cctx.Int("concurrency"); concurrency > 0 {
 						customsConfig.Concurrency = concurrency
-					}
-
-					// include CLI defined inspectors
-					if inspectors := cctx.StringSlice("inspector"); inspectors != nil {
-						for _, inspector := range inspectors {
-							customsConfig.Inspectors[inspector] = inspector
-						}
-					}
-
-					if cctx.Bool("include-pr-data") {
-						customsConfig.FetchPullInfo = true
 					}
 
 					inspection, err := customs.NewInspection(customsConfig, in)
 					if err != nil {
 						color.New(color.FgRed).Println(err.Error())
 						return cli.ShowSubcommandHelp(cctx)
+					}
+					err = populateGitHubData(cctx, customsConfig, inspection)
+					if err != nil {
+						return cli.Exit(err, 1)
 					}
 
 					if cctx.Bool("only-import-json") {
@@ -132,7 +129,12 @@ func New() *CLI {
 
 					}
 
-					inspection.Perform()
+					err = inspection.Perform()
+					if err != nil {
+						return cli.Exit(color.New(color.FgRed).Sprintf("Customs inspection encountered an error: %s\n", err.Error()), 1)
+					}
+
+					color.New(color.FgGreen).Fprintf(os.Stderr, "Customs inspection passed!")
 
 					return nil
 				},
@@ -217,4 +219,42 @@ func findGitDir(startDir string) (string, error) {
 		dir = parent
 	}
 	return "", os.ErrNotExist
+}
+
+func populateGitHubData(cctx *cli.Context, c *customs.Configuration, i *customs.Inspection) error {
+	if !cctx.Bool("include-pr-data") {
+		return nil
+	}
+
+	// Ensure we have a token to fetch with
+	token := os.Getenv("CUSTOMS_GITHUB_TOKEN")
+	if token == "" {
+		fmt.Fprint(os.Stderr, "CUSTOMS_GITHUB_TOKEN was not present so pull request information could not be fetched\n")
+		return nil
+	}
+
+	// Get the owner and repo details so we can fetch from the API
+	owner, repo, err := githelpers.NwoFromOrigin()
+	if err != nil {
+		return fmt.Errorf("Could not get owner and repo from git origin: %w", err)
+	}
+
+	// Get the most recent pushed SHA so we can fetch the PR details from GitHub
+	sha, err := githelpers.UpstreamSha()
+	if err != nil && err != githelpers.ErrNoPushedBranch {
+		return fmt.Errorf("Could not get sha: %w", err)
+	}
+
+	gh := github.NewClient(token)
+
+	return i.PopulatePullDetails(gh, owner, repo, sha)
+}
+
+func populateInspectors(cctx *cli.Context, c *customs.Configuration) {
+	// include CLI defined inspectors
+	if inspectors := cctx.StringSlice("inspector"); inspectors != nil {
+		for _, inspector := range inspectors {
+			c.Inspectors[inspector] = inspector
+		}
+	}
 }

@@ -1,17 +1,28 @@
 package github
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os/exec"
-	"regexp"
 	"strings"
 )
 
 var ErrNoPR = errors.New("no PR exists for current branch")
-var originRegexp = regexp.MustCompile(`(?:https?://github\.com/|git@github\.com:)([^/]+)/([^\.]+)`)
 
 type (
+	Client interface {
+		DetailsForPull(owner, repo string, number int) (*PullRequest, error)
+		PullRequestIDsForSha(owner, repo, sha string) ([]int, error)
+	}
+
+	defaultClient struct {
+		token      string
+		HttpClient *http.Client
+	}
+
 	// PullRequestFetcher is the interface for ultimately fetching the title and description of a Pull Request
 	PullRequestFetcher interface {
 		PullsForSha(owner, repo, sha string) ([]int, error)
@@ -20,8 +31,9 @@ type (
 
 	// PullRequest represents a subset of GitHub Pull Request
 	PullRequest struct {
-		Title       string
-		Description string
+		ID    uint
+		Title string
+		Body  string
 	}
 
 	// ShaResolver is used to fetch the most relevant SHA
@@ -33,36 +45,88 @@ type (
 	GitShaResolver struct{}
 )
 
-func FetchPullRequestInfo(ghFetcher PullRequestFetcher, shaResolver ShaResolver) (*PullRequest, error) {
-	cmd := exec.Command("git", "remote", "get-url", "origin")
-	output, err := cmd.Output()
+func NewClient(token string) Client {
+	return defaultClient{
+		token:      token,
+		HttpClient: http.DefaultClient,
+	}
+}
+
+func (c defaultClient) DetailsForPull(owner, repo string, number int) (*PullRequest, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d", owner, repo, number)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	remoteURL := strings.TrimSpace(string(output))
-	matches := originRegexp.FindStringSubmatch(remoteURL)
-	if len(matches) != 3 {
-		return nil, fmt.Errorf("could not parse owner and repo from remote URL")
-	}
-	owner := matches[1]
-	repo := matches[2]
-	sha, err := shaResolver.RelevantSha()
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github.groot-preview+json")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("could not get latest pushed SHA: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status: %d, body: %s", resp.StatusCode, body)
 	}
 
-	numbers, err := ghFetcher.PullsForSha(owner, repo, sha)
-	if len(numbers) == 0 {
-		return nil, ErrNoPR
-	}
-
-	pr, err := ghFetcher.PullDetails(owner, repo, numbers[0])
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return pr, nil
+	pullRequest := &PullRequest{}
+	if err := json.Unmarshal(body, &pullRequest); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	return pullRequest, nil
+}
+
+func (c defaultClient) PullRequestIDsForSha(owner, repo string, sha string) ([]int, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s/pulls", owner, repo, sha)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github.groot-preview+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status: %d, body: %s", resp.StatusCode, body)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	type pullsForShaResponse struct {
+		Number int `json:"number"`
+	}
+
+	var pullRequests []pullsForShaResponse
+	if err := json.Unmarshal(body, &pullRequests); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	numbers := make([]int, len(pullRequests))
+	for i, pull := range pullRequests {
+		numbers[i] = pull.Number
+	}
+
+	return numbers, nil
 }
 
 func (g GitShaResolver) RelevantSha() (string, error) {

@@ -16,7 +16,6 @@ import (
 type Inspection struct {
 	config        *Configuration
 	customsImport *Import
-	diff          Diff
 }
 
 func NewInspection(c *Configuration, diffReader io.Reader) (*Inspection, error) {
@@ -30,27 +29,29 @@ func NewInspection(c *Configuration, diffReader io.Reader) (*Inspection, error) 
 		customsImport: &Import{Diff: diff},
 	}
 
-	if c.FetchPullInfo {
-		token := os.Getenv("CUSTOMS_GITHUB_TOKEN")
-		if token == "" {
-			fmt.Fprint(os.Stderr, "CUSTOMS_GITHUB_TOKEN was not present so pull request information could not be fetched\n")
-		} else {
+	return inspection, nil
+}
 
-			pr, err := github.FetchPullRequestInfo(
-				github.Fetcher{Token: token},
-				github.GitShaResolver{},
-			)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not fetch GitHub data. Continuing without it. Error: %s\n", err)
-			} else {
-				inspection.customsImport.PullTitle = pr.Title
-				inspection.customsImport.PullDescription = pr.Description
-			}
-		}
+func (i *Inspection) PopulatePullDetails(gh github.Client, owner, repo, sha string) error {
+	numbers, err := gh.PullRequestIDsForSha(owner, repo, sha)
+	if err != nil {
+		return err
 	}
 
-	return inspection, nil
+	if len(numbers) == 0 {
+		return github.ErrNoPR
+	}
+
+	pr, err := gh.DetailsForPull(owner, repo, numbers[0])
+	if err != nil {
+		return err
+	}
+
+	i.customsImport.PullTitle = pr.Title
+	i.customsImport.PullDescription = pr.Body
+	i.customsImport.PullProvided = true
+
+	return nil
 }
 
 func (i *Inspection) ImportJSON() ([]byte, error) {
