@@ -3,4 +3,4 @@ customs:
   formatter: pretty  # The formatter to use
   inspectors:        # The inspector scripts to run and report on
     pr-body:
-        command: 'customs inspector pull-body'
+        command: './customs inspector pull-body'
