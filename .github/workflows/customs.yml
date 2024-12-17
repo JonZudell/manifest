@@ -17,5 +17,8 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Run checks
-        run: go build cmd/customs/main.go
+      - name: Build customs
+        run: go build cmd/customs/main.go -o customs
+
+      - name: Customs inspection
+        run: customs inspect
