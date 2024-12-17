@@ -47,6 +47,10 @@ func (i *Inspection) PopulatePullDetails(gh github.Client, owner, repo, sha stri
 		return err
 	}
 
+	i.customsImport.RepoOwner = owner
+	i.customsImport.RepoName = repo
+	i.customsImport.PullNumber = numbers[0]
+
 	i.customsImport.PullTitle = pr.Title
 	i.customsImport.PullDescription = pr.Body
 	i.customsImport.PullProvided = true

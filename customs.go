@@ -17,6 +17,13 @@ type Import struct {
 	// PullProvided is true if the pull request is provided.
 	PullProvided bool `json:"pullProvided"`
 
+	// RepoOwner is the owner of the repo
+	RepoOwner string `json:"repoOwner"`
+	// RepoName is the name of the repo
+	RepoName string `json:"repoName"`
+	// RepoRef is the pull request number being inspected
+	PullNumber int `json:"pullNumber"`
+
 	// Diff is the parsed changes for this diff
 	Diff Diff `json:"diff"`
 }
