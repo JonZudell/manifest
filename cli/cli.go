@@ -40,6 +40,11 @@ func New() *CLI {
 						Name:  "only-import-json",
 						Usage: "Outputs only the JSON and does not run the inspectors",
 					},
+					&cli.BoolFlag{
+						Name:    "include-pr-data",
+						Aliases: []string{"gh"},
+						Usage:   "Include PR title, description",
+					},
 					&cli.IntFlag{
 						Name:  "concurrency",
 						Usage: "Sets how many inspectors will run concurrently",
@@ -96,6 +101,10 @@ func New() *CLI {
 						for _, inspector := range inspectors {
 							customsConfig.Inspectors[inspector] = inspector
 						}
+					}
+
+					if cctx.Bool("include-pr-data") {
+						customsConfig.FetchPullInfo = true
 					}
 
 					inspection, err := customs.NewInspection(customsConfig, in)

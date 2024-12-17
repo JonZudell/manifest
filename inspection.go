@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/blakewilliams/customs/github"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -24,10 +25,32 @@ func NewInspection(c *Configuration, diffReader io.Reader) (*Inspection, error) 
 		return nil, fmt.Errorf("could not create diff: %w", err)
 	}
 
-	return &Inspection{
+	inspection := &Inspection{
 		config:        c,
 		customsImport: &Import{Diff: diff},
-	}, nil
+	}
+
+	if c.FetchPullInfo {
+		token := os.Getenv("CUSTOMS_GITHUB_TOKEN")
+		if token == "" {
+			fmt.Fprint(os.Stderr, "CUSTOMS_GITHUB_TOKEN was not present so pull request information could not be fetched\n")
+		} else {
+
+			pr, err := github.FetchPullRequestInfo(
+				github.Fetcher{Token: token},
+				github.GitShaResolver{},
+			)
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not fetch GitHub data. Continuing without it. Error: %s\n", err)
+			} else {
+				inspection.customsImport.PullTitle = pr.Title
+				inspection.customsImport.PullDescription = pr.Description
+			}
+		}
+	}
+
+	return inspection, nil
 }
 
 func (i *Inspection) ImportJSON() ([]byte, error) {
