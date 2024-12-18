@@ -18,7 +18,7 @@ type Formatter struct {
 
 type GitHubClient interface {
 	Comment(number int, comment string) error
-	FileComment(github.FileComment) error
+	FileComment(github.NewFileComment) error
 }
 
 // TODO remove number and sha, use the import instead
@@ -53,7 +53,7 @@ func (f *Formatter) Format(source string, i *manifest.Import, r manifest.Result)
 
 			message.WriteString(fmt.Sprintf(footer, source))
 
-			c := github.FileComment{
+			c := github.NewFileComment{
 				Sha:    f.sha,
 				Text:   message.String(),
 				Number: f.number,
