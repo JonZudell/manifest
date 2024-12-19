@@ -16,7 +16,6 @@ func PullBody(entry *manifest.Import, r *manifest.Result) error {
 	}
 
 	// for testing purposes
-	r.WarnLine("inspectors/pull_body.go", "RIGHT", 20, "This is a warning")
 
 	return nil
 }
