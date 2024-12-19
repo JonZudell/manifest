@@ -15,5 +15,5 @@ else
     exit 1
   fi
 fi
-
-docker run -e MANIFEST_GITHUB_TOKEN=$MANIFEST_GITHUB_TOKEN ghcr.io/jonzudell/manifest/manifest:latest
+current_dir=$(pwd)
+docker run -v "$current_dir":/app -w /app -e MANIFEST_GITHUB_TOKEN=$MANIFEST_GITHUB_TOKEN ghcr.io/jonzudell/manifest/manifest:v0.0.2
