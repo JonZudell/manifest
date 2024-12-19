@@ -24,6 +24,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/manifest:latest -t ghcr.io/${{ github.repository }}/manifest:${{ github.ref_name }} .
-          docker push ghcr.io/${{ github.repository }}/manifest:latest
-          docker push ghcr.io/${{ github.repository }}/manifest:${{ github.ref_name }} 
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ghcr.io/$REPO/manifest:latest -t ghcr.io/$REPO/manifest:${{ github.ref_name }} .
+          docker push ghcr.io/$REPO/manifest:latest
+          docker push ghcr.io/$REPO/manifest:${{ github.ref_name }}
