@@ -8,6 +8,7 @@ on:
 
 jobs:
   call-manifest-check-head:
+    needs: publish-image
     uses: ./.github/workflows/manifest-check.yml
     with:
       MANIFEST_IMAGE_TAG: latest

@@ -13,7 +13,7 @@ WORKDIR /app
 
 RUN git config --global --add safe.directory /app
 RUN echo "#!/bin/sh" > /home/manifestuser/start_cmd.sh
-RUN echo "git fetch --depth=1 origin \$BRANCH \$HASH" >> /home/manifestuser/start_cmd.sh
+RUN echo "git fetch origin \$BRANCH \$HASH" >> /home/manifestuser/start_cmd.sh
 RUN echo "BRANCH=\$(git rev-parse --abbrev-ref HEAD)" >> /home/manifestuser/start_cmd.sh
 RUN echo "HASH=\$(git rev-parse HEAD)" >> /home/manifestuser/start_cmd.sh
 RUN echo "git diff origin/\$BRANCH...HEAD | manifest inspect --sha \$HASH --formatter github --strict" >> /home/manifestuser/start_cmd.sh
