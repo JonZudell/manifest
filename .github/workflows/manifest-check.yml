@@ -3,6 +3,10 @@ name: Manifest check
 on:
   workflow_call:
     secrets: {}
+    inputs:
+      MANIFEST_IMAGE_TAG:
+        type: string
+        required: true
 
 permissions:
   contents: read
