@@ -30,6 +30,7 @@ jobs:
 
       - name: Configure Git safe directory
         run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+        run: git config --global --add safe.directory /__w/$(echo ${{ github.event.repository.name }} | cut -d'/' -f2)/$(echo ${{ github.event.repository.name }} | cut -d'/' -f2)
 
       - name: Fetch target branch
         run: git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
