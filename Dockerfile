@@ -1,5 +1,6 @@
 FROM alpine:latest
-
+RUN adduser -D -u 1001 manifestuser
+USER manifestuser
 WORKDIR /manifest
 # Update the package list and install Go
 RUN apk update && apk add --no-cache go git
