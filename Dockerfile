@@ -6,7 +6,7 @@ RUN apk update && apk add --no-cache go git
 
 COPY ./ ./
 
-RUN go install ./cmd/manifest && go build -o manifest cmd/manifest/main.go
+RUN go install ./cmd/manifest
 ENV PATH="/root/go/bin:${PATH}"
 WORKDIR /app
 
