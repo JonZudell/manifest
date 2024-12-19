@@ -9,5 +9,3 @@ on:
 jobs:
   call-manifest-check:
     uses: ./.github/workflows/manifest-check.yml
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
