@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
+  manifest-check:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/jonzudell/manifest/manifest:v0.0.6
