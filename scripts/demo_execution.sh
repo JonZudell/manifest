@@ -17,4 +17,4 @@ else
 fi
 
 current_dir=$(pwd)
-docker run -v "$current_dir":/app -w /app -e MANIFEST_GITHUB_TOKEN=$MANIFEST_GITHUB_TOKEN ghcr.io/jonzudell/manifest/manifest:v0.0.4
+docker run -v "$current_dir":/app -w /app -e MANIFEST_GITHUB_TOKEN=$MANIFEST_GITHUB_TOKEN ghcr.io/jonzudell/manifest/manifest:v0.0.5
