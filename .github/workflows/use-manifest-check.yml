@@ -1,0 +1,13 @@
+name: Use Manifest Check
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  call-manifest-check:
+    uses: ./.github/workflows/manifest-check.yml
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
