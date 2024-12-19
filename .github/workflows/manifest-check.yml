@@ -1,10 +1,8 @@
 name: Manifest check
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+  workflow_call:
+    secrets: {}
 
 permissions:
   contents: read
