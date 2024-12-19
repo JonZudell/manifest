@@ -24,4 +24,4 @@ jobs:
 
       - name: Manifest inspection
         run: |
-          /home/manifestuser/entry_cmd.sh
+          /home/manifestuser/start_cmd.sh

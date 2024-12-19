@@ -1,4 +1,4 @@
-name: Use Manifest Check
+name: Use Manifest Check Head
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: ["main"]
 
 jobs:
-  call-manifest-check:
+  call-manifest-check-head:
     uses: ./.github/workflows/manifest-check.yml
     with:
       MANIFEST_IMAGE_TAG: latest
