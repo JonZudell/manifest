@@ -11,8 +11,7 @@ ENV PATH="/home/manifestuser/go/bin:${PATH}"
 
 WORKDIR /app
 
-# because /app is mounted from host 
-RUN git config --global --add safe.directory /app 
+RUN git config --global --add safe.directory /app
 RUN echo "#!/bin/sh" > /home/manifestuser/start_cmd.sh
 RUN echo "BRANCH=\$(git rev-parse --abbrev-ref HEAD)" >> /home/manifestuser/start_cmd.sh
 RUN echo "HASH=\$(git rev-parse HEAD)" >> /home/manifestuser/start_cmd.sh
