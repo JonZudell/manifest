@@ -16,7 +16,7 @@ type (
 		DetailsForPull(number int) (*PullRequest, error)
 		PullRequestIDsForSha(sha string) ([]int, error)
 		Comment(number int, comment string) error
-		FileComment(FileComment) error
+		FileComment(NewFileComment) error
 		Owner() string
 		Repo() string
 	}
@@ -160,7 +160,7 @@ func (c defaultClient) Comment(number int, comment string) error {
 	return nil
 }
 
-type FileComment struct {
+type NewFileComment struct {
 	Sha    string
 	Number int
 	File   string
@@ -169,7 +169,7 @@ type FileComment struct {
 	Side   string
 }
 
-func (c defaultClient) FileComment(fc FileComment) error {
+func (c defaultClient) FileComment(fc NewFileComment) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d/comments", c.owner, c.repo, fc.Number)
 	payload := map[string]interface{}{
 		"body":      fc.Text,
