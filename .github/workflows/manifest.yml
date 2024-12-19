@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/jonzudell/manifest/manifest:v0.0.3
     env:
       MANIFEST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -28,9 +30,6 @@ jobs:
 
       - name: Fetch target branch
         run: git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }}
-
-      - name: Build manifest
-        run: go build -o manifest cmd/manifest/main.go
-
+        
       - name: Manifest inspection
-        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | ./manifest inspect --sha ${{ github.event.pull_request.head.sha }} --formatter github --strict
+        run: git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | manifest inspect --sha ${{ github.event.pull_request.head.sha }} --formatter github --strict
