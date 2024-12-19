@@ -12,7 +12,7 @@ jobs:
   manifest-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/jonzudell/manifest/manifest:v0.0.6
+      image: ghcr.io/jonzudell/manifest/manifest:${{ vars.MANIFEST_IMAGE_TAG }}
       options: --user 1001
     env:
       MANIFEST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -22,12 +22,6 @@ jobs:
         with:
           fetch-depth: 10000
 
-      - name: Fetch target branch
-        run: |
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }} \
-            ${{ github.event.pull_request.head.ref }}
-
       - name: Manifest inspection
         run: |
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | \
-            manifest inspect --sha ${{ github.event.pull_request.head.sha }} --formatter github --strict
+          /home/manifestuser/entry_cmd.sh

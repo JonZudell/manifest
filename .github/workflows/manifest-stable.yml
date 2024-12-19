@@ -9,3 +9,5 @@ on:
 jobs:
   call-manifest-check:
     uses: ./.github/workflows/manifest-check.yml
+    with:
+      MANIFEST_IMAGE_TAG: v0.0.6

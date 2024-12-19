@@ -5,9 +5,6 @@ using configurable rules. It is language agnostic, passing the relevant pull
 request and diff information to scripts via JSON while using the resulting
 stdout JSON to comment on the PR/diffs, fail the build, etc.
 
-## Try Manifest
-Execute the following command from a repository/branch that has an associated Pull Request.
-`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/JonZudell/manifest/HEAD/scripts/demo_execution.sh)"`
 ## Installing Manifest
 
 Run `go install github.com/blakewilliams/manifest/cmd/manifest` or clone+build from source.
