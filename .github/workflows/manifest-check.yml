@@ -2,9 +2,7 @@ name: Manifest check
 
 on:
   workflow_call:
-    secrets:
-      GITHUB_TOKEN:
-        required: true
+    secrets: {}
 
 permissions:
   contents: read
