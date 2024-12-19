@@ -3,6 +3,10 @@ name: Manifest check
 on:
   workflow_call:
     secrets: {}
+    inputs:
+      MANIFEST_IMAGE_TAG:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,7 +16,7 @@ jobs:
   manifest-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/jonzudell/manifest/manifest:${{ vars.MANIFEST_IMAGE_TAG }}
+      image: ghcr.io/jonzudell/manifest/manifest:${{ inputs.MANIFEST_IMAGE_TAG }}
       options: --user 1001
     env:
       MANIFEST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
